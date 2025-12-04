@@ -8,12 +8,12 @@ declare global {
   }
 }
 
-export const PhotosPicker: React.FC<{ 
-  onPhotosSelected: (photos: GooglePhoto[]) => void 
+export const PhotosPicker: React.FC<{
+  onPhotosSelected: (photos: GooglePhoto[]) => void
 }> = ({ onPhotosSelected }) => {
   const [loading, setLoading] = useState(false);
-  
-  const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
+
+  const API_KEY = process.env.VITE_GOOGLE_API_KEY;
 
   const initializePicker = () => {
     setLoading(true);
