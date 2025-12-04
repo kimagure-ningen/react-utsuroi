@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { PhotosPicker } from './PhotosPicker';
+import { GooglePhoto } from '../types';
 
 interface CalendarEvent {
   id: string;
@@ -19,6 +21,7 @@ export const CalendarFetcher: React.FC = () => {
   const [accessToken, setAccessToken] = useState('');
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(false);
+  const [selectedPhotos, setSelectedPhotos] = useState<GooglePhoto[]>([]);
 
   const CLIENT_ID = '188207356268-ko7e14s0op4hb4hsbo93fm2rhevthesr.apps.googleusercontent.com';
   const REDIRECT_URI = window.location.origin + window.location.pathname;
@@ -54,6 +57,7 @@ export const CalendarFetcher: React.FC = () => {
       
       if (token) {
         setAccessToken(token);
+        localStorage.setItem('accessToken', token);
         console.log('✅ アクセストークン取得成功');
         // URLからハッシュを削除
         window.history.replaceState({}, document.title, window.location.pathname);
@@ -210,6 +214,11 @@ export const CalendarFetcher: React.FC = () => {
     console.log('\n✅ === 統計分析完了 ===\n');
   };
 
+  const handlePhotosSelected = (photos: GooglePhoto[]) => {
+    setSelectedPhotos(photos);
+    console.log('✅ 写真が選択されました:', photos.length, '枚');
+  };
+
   return (
     <div style={{ padding: '40px', fontFamily: 'sans-serif', maxWidth: '800px' }}>
       <h1 style={{ fontSize: '32px', marginBottom: '20px' }}>
@@ -297,6 +306,26 @@ export const CalendarFetcher: React.FC = () => {
               </p>
               <p style={{ fontSize: '14px', color: '#666', marginTop: '10px' }}>
                 📊 詳細はブラウザのコンソール（DevTools）を開いて確認してください
+              </p>
+            </div>
+          )}
+
+          {events.length > 0 && (
+            <PhotosPicker onPhotosSelected={handlePhotosSelected} />
+          )}
+          
+          {selectedPhotos.length > 0 && (
+            <div
+              style={{
+                marginTop: '20px',
+                padding: '20px',
+                backgroundColor: '#e8f5e9',
+                borderRadius: '8px',
+              }}
+            >
+              <h3 style={{ fontSize: '20px' }}>✅ 写真選択完了</h3>
+              <p style={{ fontSize: '16px' }}>
+                選択した写真: <strong>{selectedPhotos.length}枚</strong>
               </p>
             </div>
           )}

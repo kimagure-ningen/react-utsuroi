@@ -1,106 +1,129 @@
 import { useState } from 'react';
+import { GooglePhoto } from '../types';
 
 declare global {
   interface Window {
     google: any;
+    gapi: any;
   }
 }
 
-interface PickerPhoto {
-  id: string;
-  url: string;
-  filename: string;
-}
-
-export const PhotosPicker: React.FC<{ onPhotosSelected: (photos: PickerPhoto[]) => void }> = ({ onPhotosSelected }) => {
-  const [accessToken, setAccessToken] = useState('');
+export const PhotosPicker: React.FC<{ 
+  onPhotosSelected: (photos: GooglePhoto[]) => void 
+}> = ({ onPhotosSelected }) => {
+  const [loading, setLoading] = useState(false);
   
-  const CLIENT_ID = '188207356268-ko7e14s0op4hb4hsbo93fm2rhevthesr.apps.googleusercontent.com';
+  const API_KEY = 'AIzaSyCnriwIh-pRFw7VwppKqzlS4-hqSepLdNU';
 
-  // OAuth認証
-  const handleAuth = () => {
-    const client = window.google.accounts.oauth2.initTokenClient({
-      client_id: CLIENT_ID,
-      scope: 'https://www.googleapis.com/auth/photospicker.mediaitems.readonly',
-      callback: (response: any) => {
-        if (response.access_token) {
-          setAccessToken(response.access_token);
-          console.log('✅ 認証成功');
-        }
-      },
-    });
+  const initializePicker = () => {
+    setLoading(true);
     
-    client.requestAccessToken();
-  };
-
-  // Photo Pickerを開く
-  const openPicker = async () => {
+    // カレンダー認証で取得したトークンを使う
+    const accessToken = localStorage.getItem('accessToken');
+    
     if (!accessToken) {
-      alert('先に認証してください');
+      alert('先にカレンダーデータを取得してください');
+      setLoading(false);
       return;
     }
 
+    loadPickerWithToken(accessToken);
+  };
+
+  const loadPickerWithToken = (accessToken: string) => {
+    if (!window.gapi) {
+      const gapiScript = document.createElement('script');
+      gapiScript.src = 'https://apis.google.com/js/api.js';
+      gapiScript.onload = () => {
+        console.log('✅ gapi読み込み完了');
+        window.gapi.load('picker', () => {
+          console.log('✅ picker読み込み完了');
+          createPicker(accessToken);
+        });
+      };
+      document.body.appendChild(gapiScript);
+    } else {
+      window.gapi.load('picker', () => {
+        console.log('✅ picker読み込み完了');
+        createPicker(accessToken);
+      });
+    }
+  };
+
+  const createPicker = (accessToken: string) => {
+    console.log('🔍 Picker作成開始');
+    console.log('🔍 accessToken:', accessToken ? '存在する' : '存在しない');
+    console.log('🔍 API_KEY:', API_KEY);
+    
     try {
-      const response = await window.google.picker.PickerBuilder()
-        .addView(window.google.picker.ViewId.PHOTOS)
+      // ビューを指定せずに最もシンプルに
+      const docsView = new window.google.picker.DocsView();
+      docsView.setIncludeFolders(true);
+      docsView.setMimeTypes('image/png,image/jpeg,image/jpg');
+      
+      const picker = new window.google.picker.PickerBuilder()
+        .addView(docsView)
         .setOAuthToken(accessToken)
-        .setDeveloperKey('YOUR_API_KEY') // Google Cloud ConsoleでAPI Keyを作成する必要があります
+        .setDeveloperKey(API_KEY)
         .setCallback((data: any) => {
+          console.log('📦 Pickerコールバック:', data);
           if (data.action === window.google.picker.Action.PICKED) {
-            const photos = data.docs.map((doc: any) => ({
-              id: doc.id,
-              url: doc.url,
-              filename: doc.name,
-            }));
-            
-            onPhotosSelected(photos);
-            console.log('✅ 選択された写真:', photos);
+            console.log('✅ 選択されました:', data.docs);
           }
         })
         .build();
       
-      response.setVisible(true);
+      console.log('✅ Picker作成成功');
+      picker.setVisible(true);
+      setLoading(false);
     } catch (error) {
-      console.error('Pickerエラー:', error);
+      console.error('❌ Picker作成エラー:', error);
+      setLoading(false);
+    }
+  };
+  
+  const handlePickerCallback = (data: any) => {
+    if (data.action === window.google.picker.Action.PICKED) {
+      console.log('✅ 選択された写真:', data.docs);
+      
+      const photos: GooglePhoto[] = data.docs.map((doc: any) => ({
+        id: doc.id,
+        baseUrl: doc.url,
+        mimeType: doc.mimeType || 'image/jpeg',
+        filename: doc.name,
+        mediaMetadata: {
+          creationTime: new Date().toISOString(),
+          width: '1920',
+          height: '1080',
+        },
+      }));
+      
+      onPhotosSelected(photos);
+      localStorage.setItem('yearPhotos', JSON.stringify(photos));
+      console.log('💾 選択した写真を保存しました:', photos.length, '枚');
     }
   };
 
   return (
     <div style={{ marginTop: '30px', padding: '20px', border: '1px solid #ccc', borderRadius: '8px' }}>
-      <h3>📸 写真を選択</h3>
-      <p>Google Photosから写真を選んで動画に追加できます</p>
+      <h3>📸 写真を手動で選択</h3>
+      <p>Google Photosから動画に使いたい写真を選んでください</p>
       
-      {!accessToken ? (
-        <button
-          onClick={handleAuth}
-          style={{
-            padding: '12px 24px',
-            fontSize: '16px',
-            cursor: 'pointer',
-            backgroundColor: '#4285f4',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-          }}
-        >
-          🔐 写真選択の認証
-        </button>
-      ) : (
-        <button
-          onClick={openPicker}
-          style={{
-            padding: '12px 24px',
-            fontSize: '16px',
-            cursor: 'pointer',
-            backgroundColor: '#34a853',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-          }}
-        >
-          📷 写真を選択
-        </button>
-      )}
+      <button
+        onClick={initializePicker}
+        disabled={loading}
+        style={{
+          padding: '12px 24px',
+          fontSize: '16px',
+          cursor: loading ? 'not-allowed' : 'pointer',
+          backgroundColor: loading ? '#ccc' : '#4285f4',
+          color: 'white',
+          border: 'none',
+          borderRadius: '4px',
+        }}
+      >
+        {loading ? '⏳ 読み込み中...' : '📷 写真を選択'}
+      </button>
     </div>
   );
 };
