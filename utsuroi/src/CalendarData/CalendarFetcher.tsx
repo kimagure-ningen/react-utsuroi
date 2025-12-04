@@ -89,6 +89,21 @@ export const CalendarFetcher: React.FC = () => {
       const tokenData = await tokenInfo.json();
       console.log('🔍 トークン情報:', tokenData);
       console.log('🔍 含まれているスコープ:', tokenData.scope);
+
+      // Photos Library APIのスコープがあるか確認
+      const hasPhotosScope = tokenData.scope?.includes('photoslibrary');
+      console.log(
+        hasPhotosScope
+          ? '✅ Photos Library APIのスコープが含まれています'
+          : '❌ Photos Library APIのスコープがありません'
+      );
+
+      if (!hasPhotosScope) {
+        console.warn(
+          '⚠️ 警告: Photos Library APIのスコープがないため、写真の自動取得は失敗する可能性があります'
+        );
+        console.warn('💡 解決方法: もう一度ログアウト→ログインして、すべての権限を許可してください');
+      }
     } catch (e) {
       console.error('トークン情報取得エラー:', e);
     }
@@ -135,12 +150,35 @@ export const CalendarFetcher: React.FC = () => {
 
       // 写真も取得
       console.log('\n📸 写真の取得を開始...');
-      const { fetchPhotosForYear } = await import('./fetchPhotos');
-      const photos = await fetchPhotosForYear(accessToken, 2025);
-      
-      // LocalStorageに写真データも保存
-      localStorage.setItem('yearPhotos', JSON.stringify(photos));
-      console.log('💾 写真データをLocalStorageに保存しました');
+      try {
+        const { fetchPhotosForYear } = await import('./fetchPhotos');
+        const photos = await fetchPhotosForYear(accessToken, 2025);
+
+        // LocalStorageに写真データも保存
+        localStorage.setItem('yearPhotos', JSON.stringify(photos));
+        console.log('💾 写真データをLocalStorageに保存しました');
+      } catch (photoError: any) {
+        console.error('❌ 写真取得エラー:', photoError);
+
+        // 403エラーの場合は詳細な説明を表示
+        if (photoError.message && photoError.message.includes('403')) {
+          alert(
+            '写真の取得に失敗しました (403エラー)\n\n' +
+            '原因:\n' +
+            '1. Google Cloud ConsoleでPhotos Library APIが有効化されていない\n' +
+            '2. OAuth同意画面に必要なスコープが登録されていない\n\n' +
+            '解決方法:\n' +
+            '- 手動で写真を選択する機能を使用してください\n' +
+            '- または、Google Cloud Consoleの設定を確認してください'
+          );
+        } else {
+          alert(`写真取得エラー: ${photoError.message || '不明なエラー'}`);
+        }
+
+        // 写真取得は失敗してもカレンダーデータは保存されているので続行
+        console.log('⚠️ 写真の自動取得は失敗しましたが、カレンダーデータは取得できています');
+        console.log('💡 「写真を手動で選択」機能を使用してください');
+      }
     } catch (error) {
       console.error('❌ イベント取得エラー:', error);
       alert('エラーが発生しました。もう一度ログインしてください。');
