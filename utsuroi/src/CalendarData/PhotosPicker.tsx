@@ -54,25 +54,25 @@ export const PhotosPicker: React.FC<{
     console.log('🔍 Picker作成開始');
     console.log('🔍 accessToken:', accessToken ? '存在する' : '存在しない');
     console.log('🔍 API_KEY:', API_KEY);
-    
+
     try {
-      // ビューを指定せずに最もシンプルに
+      // Google Photosビューを使用
+      const photosView = new window.google.picker.PhotosView();
+      photosView.setType(window.google.picker.PhotosView.Type.ALL);
+
+      // Google Driveのビューも追加（画像ファイル用）
       const docsView = new window.google.picker.DocsView();
       docsView.setIncludeFolders(true);
-      docsView.setMimeTypes('image/png,image/jpeg,image/jpg');
-      
+      docsView.setMimeTypes('image/png,image/jpeg,image/jpg,image/gif,image/webp');
+
       const picker = new window.google.picker.PickerBuilder()
+        .addView(photosView)
         .addView(docsView)
         .setOAuthToken(accessToken)
         .setDeveloperKey(API_KEY)
-        .setCallback((data: any) => {
-          console.log('📦 Pickerコールバック:', data);
-          if (data.action === window.google.picker.Action.PICKED) {
-            console.log('✅ 選択されました:', data.docs);
-          }
-        })
+        .setCallback(handlePickerCallback)  // handlePickerCallback関数を直接呼び出し
         .build();
-      
+
       console.log('✅ Picker作成成功');
       picker.setVisible(true);
       setLoading(false);
@@ -83,24 +83,39 @@ export const PhotosPicker: React.FC<{
   };
 
   const handlePickerCallback = (data: any) => {
+    console.log('📦 Pickerコールバック:', data);
+
     if (data.action === window.google.picker.Action.PICKED) {
       console.log('✅ 選択された写真:', data.docs);
-      
-      const photos: GooglePhoto[] = data.docs.map((doc: any) => ({
-        id: doc.id,
-        baseUrl: doc.url,
-        mimeType: doc.mimeType || 'image/jpeg',
-        filename: doc.name,
-        mediaMetadata: {
-          creationTime: new Date().toISOString(),
-          width: '1920',
-          height: '1080',
-        },
-      }));
-      
-      onPhotosSelected(photos);
-      localStorage.setItem('yearPhotos', JSON.stringify(photos));
-      console.log('💾 選択した写真を保存しました:', photos.length, '枚');
+
+      try {
+        const photos: GooglePhoto[] = data.docs.map((doc: any) => {
+          console.log('📸 処理中の写真:', doc);
+
+          return {
+            id: doc.id,
+            baseUrl: doc.url || doc.embedUrl || '',
+            mimeType: doc.mimeType || 'image/jpeg',
+            filename: doc.name || `photo-${doc.id}`,
+            mediaMetadata: {
+              creationTime: doc.lastEditedUtc ? new Date(parseInt(doc.lastEditedUtc)).toISOString() : new Date().toISOString(),
+              width: doc.sizeBytes ? '1920' : '1920',
+              height: doc.sizeBytes ? '1080' : '1080',
+            },
+          };
+        });
+
+        console.log('✅ 変換された写真データ:', photos);
+        onPhotosSelected(photos);
+        localStorage.setItem('yearPhotos', JSON.stringify(photos));
+        console.log('💾 選択した写真を保存しました:', photos.length, '枚');
+      } catch (error) {
+        console.error('❌ 写真データの処理中にエラー:', error);
+        alert('写真の処理中にエラーが発生しました');
+      }
+    } else if (data.action === window.google.picker.Action.CANCEL) {
+      console.log('❌ ユーザーが選択をキャンセルしました');
+      setLoading(false);
     }
   };
 
