@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { PhotosPicker } from './PhotosPicker';
 import { GooglePhoto } from '../types';
+import { fetchPhotosForYear } from './fetchPhotos';
 
 interface CalendarEvent {
   id: string;
@@ -151,7 +152,6 @@ export const CalendarFetcher: React.FC = () => {
       // 写真も取得
       console.log('\n📸 写真の取得を開始...');
       try {
-        const { fetchPhotosForYear } = await import('./fetchPhotos');
         const photos = await fetchPhotosForYear(accessToken, 2025);
 
         // LocalStorageに写真データも保存
