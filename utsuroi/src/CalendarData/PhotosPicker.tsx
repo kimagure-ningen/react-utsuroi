@@ -13,7 +13,7 @@ export const PhotosPicker: React.FC<{
 }> = ({ onPhotosSelected }) => {
   const [loading, setLoading] = useState(false);
   
-  const API_KEY = 'AIzaSyCnriwIh-pRFw7VwppKqzlS4-hqSepLdNU';
+  const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
 
   const initializePicker = () => {
     setLoading(true);
@@ -81,7 +81,7 @@ export const PhotosPicker: React.FC<{
       setLoading(false);
     }
   };
-  
+
   const handlePickerCallback = (data: any) => {
     if (data.action === window.google.picker.Action.PICKED) {
       console.log('✅ 選択された写真:', data.docs);
