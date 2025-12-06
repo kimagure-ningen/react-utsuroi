@@ -25,8 +25,8 @@ export const CalendarFetcher: React.FC = () => {
 
   const CLIENT_ID = process.env.REMOTION_GOOGLE_CLIENT_ID || '188207356268-ko7e14s0op4hb4hsbo93fm2rhevthesr.apps.googleusercontent.com';
   const REDIRECT_URI = window.location.origin + window.location.pathname;
-  // Photos Library APIは廃止されたため、Calendarのみ
-  const SCOPES = 'https://www.googleapis.com/auth/calendar.readonly';
+  // Calendar + Google Drive (写真選択用)
+  const SCOPES = 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/drive.readonly';
 
   // OAuth認証URLを生成（リダイレクト方式）
   const handleLogin = () => {
@@ -52,10 +52,12 @@ export const CalendarFetcher: React.FC = () => {
       '⚠️ Google Cloud Consoleで以下の設定を確認してください:\n\n' +
       `1. 承認済みのリダイレクトURI:\n${REDIRECT_URI}\n\n` +
       `2. OAuth同意画面で以下のスコープを追加:\n` +
-      '- https://www.googleapis.com/auth/calendar.readonly\n\n' +
+      '- https://www.googleapis.com/auth/calendar.readonly\n' +
+      '- https://www.googleapis.com/auth/drive.readonly\n\n' +
       '3. 有効化が必要なAPI:\n' +
       '- Google Calendar API\n' +
-      '- Google Picker API (写真選択用)\n\n' +
+      '- Google Drive API\n' +
+      '- Google Picker API\n\n' +
       'コンソールログも確認してください。'
     );
 
