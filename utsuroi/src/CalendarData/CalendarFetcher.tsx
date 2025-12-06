@@ -30,6 +30,11 @@ export const CalendarFetcher: React.FC = () => {
 
   // OAuth認証URLを生成（リダイレクト方式）
   const handleLogin = () => {
+    // デバッグ: 現在のURLとリダイレクトURIを表示
+    console.log('🔍 現在のURL:', window.location.href);
+    console.log('🔍 REDIRECT_URI:', REDIRECT_URI);
+    console.log('🔍 CLIENT_ID:', CLIENT_ID);
+
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${new URLSearchParams({
       client_id: CLIENT_ID,
       redirect_uri: REDIRECT_URI,
@@ -41,7 +46,19 @@ export const CalendarFetcher: React.FC = () => {
     // デバッグ: URLをコンソールに表示
     console.log('🔍 認証URL:', authUrl);
     console.log('🔍 SCOPES:', SCOPES);
-    
+
+    // Google Cloud Consoleで設定する必要がある情報を表示
+    alert(
+      '⚠️ Google Cloud Consoleで以下の設定を確認してください:\n\n' +
+      `1. 承認済みのリダイレクトURI:\n${REDIRECT_URI}\n\n` +
+      `2. OAuth同意画面で以下のスコープを追加:\n` +
+      '- https://www.googleapis.com/auth/calendar.readonly\n' +
+      '- https://www.googleapis.com/auth/photoslibrary.readonly\n\n' +
+      '3. Google Calendar API を有効化\n' +
+      '4. Google Photos Library API を有効化\n\n' +
+      'コンソールログも確認してください。'
+    );
+
     // 同じウィンドウでリダイレクト
     window.location.href = authUrl;
   };
