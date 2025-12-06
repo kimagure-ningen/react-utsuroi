@@ -17,10 +17,17 @@ export const PhotosPicker: React.FC<{
 
   const initializePicker = () => {
     setLoading(true);
-    
+
+    // API KEYの確認
+    if (!API_KEY) {
+      alert('Google API Keyが設定されていません。.envファイルを確認してください。');
+      setLoading(false);
+      return;
+    }
+
     // カレンダー認証で取得したトークンを使う
     const accessToken = localStorage.getItem('accessToken');
-    
+
     if (!accessToken) {
       alert('先にカレンダーデータを取得してください');
       setLoading(false);
