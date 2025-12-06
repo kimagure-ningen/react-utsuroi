@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { PhotosPicker } from './PhotosPicker';
 import { GooglePhoto } from '../types';
-import { fetchPhotosForYear } from './fetchPhotos';
 
 interface CalendarEvent {
   id: string;
@@ -26,7 +25,8 @@ export const CalendarFetcher: React.FC = () => {
 
   const CLIENT_ID = process.env.REMOTION_GOOGLE_CLIENT_ID || '188207356268-ko7e14s0op4hb4hsbo93fm2rhevthesr.apps.googleusercontent.com';
   const REDIRECT_URI = window.location.origin + window.location.pathname;
-  const SCOPES = 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/photoslibrary.readonly https://www.googleapis.com/auth/photoslibrary.readonly.appcreateddata';
+  // Photos Library APIは廃止されたため、Calendarのみ
+  const SCOPES = 'https://www.googleapis.com/auth/calendar.readonly';
 
   // OAuth認証URLを生成（リダイレクト方式）
   const handleLogin = () => {
@@ -52,10 +52,10 @@ export const CalendarFetcher: React.FC = () => {
       '⚠️ Google Cloud Consoleで以下の設定を確認してください:\n\n' +
       `1. 承認済みのリダイレクトURI:\n${REDIRECT_URI}\n\n` +
       `2. OAuth同意画面で以下のスコープを追加:\n` +
-      '- https://www.googleapis.com/auth/calendar.readonly\n' +
-      '- https://www.googleapis.com/auth/photoslibrary.readonly\n\n' +
-      '3. Google Calendar API を有効化\n' +
-      '4. Google Photos Library API を有効化\n\n' +
+      '- https://www.googleapis.com/auth/calendar.readonly\n\n' +
+      '3. 有効化が必要なAPI:\n' +
+      '- Google Calendar API\n' +
+      '- Google Picker API (写真選択用)\n\n' +
       'コンソールログも確認してください。'
     );
 
@@ -107,21 +107,6 @@ export const CalendarFetcher: React.FC = () => {
       const tokenData = await tokenInfo.json();
       console.log('🔍 トークン情報:', tokenData);
       console.log('🔍 含まれているスコープ:', tokenData.scope);
-
-      // Photos Library APIのスコープがあるか確認
-      const hasPhotosScope = tokenData.scope?.includes('photoslibrary');
-      console.log(
-        hasPhotosScope
-          ? '✅ Photos Library APIのスコープが含まれています'
-          : '❌ Photos Library APIのスコープがありません'
-      );
-
-      if (!hasPhotosScope) {
-        console.warn(
-          '⚠️ 警告: Photos Library APIのスコープがないため、写真の自動取得は失敗する可能性があります'
-        );
-        console.warn('💡 解決方法: もう一度ログアウト→ログインして、すべての権限を許可してください');
-      }
     } catch (e) {
       console.error('トークン情報取得エラー:', e);
     }
@@ -166,36 +151,9 @@ export const CalendarFetcher: React.FC = () => {
         console.log('⚠️ 2025年のイベントが見つかりませんでした');
       }
 
-      // 写真も取得
-      console.log('\n📸 写真の取得を開始...');
-      try {
-        const photos = await fetchPhotosForYear(accessToken, 2025);
-
-        // LocalStorageに写真データも保存
-        localStorage.setItem('yearPhotos', JSON.stringify(photos));
-        console.log('💾 写真データをLocalStorageに保存しました');
-      } catch (photoError: any) {
-        console.error('❌ 写真取得エラー:', photoError);
-
-        // 403エラーの場合は詳細な説明を表示
-        if (photoError.message && photoError.message.includes('403')) {
-          alert(
-            '写真の取得に失敗しました (403エラー)\n\n' +
-            '原因:\n' +
-            '1. Google Cloud ConsoleでPhotos Library APIが有効化されていない\n' +
-            '2. OAuth同意画面に必要なスコープが登録されていない\n\n' +
-            '解決方法:\n' +
-            '- 手動で写真を選択する機能を使用してください\n' +
-            '- または、Google Cloud Consoleの設定を確認してください'
-          );
-        } else {
-          alert(`写真取得エラー: ${photoError.message || '不明なエラー'}`);
-        }
-
-        // 写真取得は失敗してもカレンダーデータは保存されているので続行
-        console.log('⚠️ 写真の自動取得は失敗しましたが、カレンダーデータは取得できています');
-        console.log('💡 「写真を手動で選択」機能を使用してください');
-      }
+      // Photos Library APIは廃止されたため、写真選択はGoogle Pickerを使用
+      console.log('💡 写真の選択は「写真を手動で選択」ボタンから行ってください');
+      console.log('📸 Google Picker APIを使用して写真を選択できます');
     } catch (error) {
       console.error('❌ イベント取得エラー:', error);
       alert('エラーが発生しました。もう一度ログインしてください。');
