@@ -24,7 +24,7 @@ export const CalendarFetcher: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [selectedPhotos, setSelectedPhotos] = useState<GooglePhoto[]>([]);
 
-  const CLIENT_ID = '188207356268-ko7e14s0op4hb4hsbo93fm2rhevthesr.apps.googleusercontent.com';
+  const CLIENT_ID = process.env.REMOTION_GOOGLE_CLIENT_ID || '188207356268-ko7e14s0op4hb4hsbo93fm2rhevthesr.apps.googleusercontent.com';
   const REDIRECT_URI = window.location.origin + window.location.pathname;
   const SCOPES = 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/photoslibrary.readonly https://www.googleapis.com/auth/photoslibrary.readonly.appcreateddata';
 
