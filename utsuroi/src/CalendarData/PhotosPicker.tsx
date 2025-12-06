@@ -63,21 +63,23 @@ export const PhotosPicker: React.FC<{
     console.log('🔍 API_KEY:', API_KEY);
 
     try {
-      // Google Photosビューを使用
-      const photosView = new window.google.picker.PhotosView();
-      photosView.setType(window.google.picker.PhotosView.Type.ALL);
-
-      // Google Driveのビューも追加（画像ファイル用）
+      // Google Driveのビューを使用（画像ファイル用）
+      // PhotosViewは廃止されたPhotos Library APIを必要とするため使用しない
       const docsView = new window.google.picker.DocsView();
       docsView.setIncludeFolders(true);
       docsView.setMimeTypes('image/png,image/jpeg,image/jpg,image/gif,image/webp');
 
+      // ユーザーのアップロードビューも追加
+      const uploadView = new window.google.picker.DocsUploadView();
+      uploadView.setIncludeFolders(true);
+
       const picker = new window.google.picker.PickerBuilder()
-        .addView(photosView)
         .addView(docsView)
+        .addView(uploadView)
         .setOAuthToken(accessToken)
         .setDeveloperKey(API_KEY)
-        .setCallback(handlePickerCallback)  // handlePickerCallback関数を直接呼び出し
+        .setCallback(handlePickerCallback)
+        .setTitle('写真を選択（Google Driveまたはアップロード）')
         .build();
 
       console.log('✅ Picker作成成功');
@@ -85,6 +87,7 @@ export const PhotosPicker: React.FC<{
       setLoading(false);
     } catch (error) {
       console.error('❌ Picker作成エラー:', error);
+      alert('Pickerの作成に失敗しました: ' + (error as Error).message);
       setLoading(false);
     }
   };
@@ -129,7 +132,7 @@ export const PhotosPicker: React.FC<{
   return (
     <div style={{ marginTop: '30px', padding: '20px', border: '1px solid #ccc', borderRadius: '8px' }}>
       <h3>📸 写真を手動で選択</h3>
-      <p>Google Photosから動画に使いたい写真を選んでください</p>
+      <p>Google Driveから写真を選択するか、ローカルファイルをアップロードしてください</p>
       
       <button
         onClick={initializePicker}
