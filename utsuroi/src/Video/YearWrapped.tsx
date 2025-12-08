@@ -28,18 +28,100 @@ const defaultStats: YearStats = {
   eventsByMonth: {},
 };
 
-// アニメーション付き背景コンポーネント
+// パーティクルコンポーネント
+const Particle: React.FC<{ frame: number; index: number; total: number }> = ({ frame, index, total }) => {
+  const delay = (index / total) * 30;
+  const duration = 90 + (index % 3) * 30;
+  const startY = -100 - (index % 5) * 50;
+  const endY = 1180;
+  const startX = (index / total) * 1920;
+  const wobble = Math.sin((frame + delay) * 0.1) * 30;
+
+  const y = interpolate(
+    frame,
+    [delay, delay + duration],
+    [startY, endY],
+    { extrapolateRight: 'clamp' }
+  );
+
+  const rotation = interpolate(
+    frame,
+    [delay, delay + duration],
+    [0, 360 * 2],
+    { extrapolateRight: 'clamp' }
+  );
+
+  const opacity = interpolate(
+    frame,
+    [delay, delay + 20, delay + duration - 20, delay + duration],
+    [0, 1, 1, 0],
+    { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+  );
+
+  const particleColors = [colors.primary, colors.secondary, colors.accent, colors.success, colors.warning];
+  const color = particleColors[index % particleColors.length];
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        left: startX + wobble,
+        top: y,
+        width: '20px',
+        height: '20px',
+        background: color,
+        borderRadius: index % 2 === 0 ? '50%' : '0%',
+        transform: `rotate(${rotation}deg)`,
+        opacity,
+        boxShadow: `0 0 20px ${color}`,
+      }}
+    />
+  );
+};
+
+// パーティクルシステム
+const ParticleSystem: React.FC<{ frame: number; count?: number }> = ({ frame, count = 50 }) => {
+  return (
+    <AbsoluteFill style={{ pointerEvents: 'none' }}>
+      {Array.from({ length: count }).map((_, i) => (
+        <Particle key={i} frame={frame} index={i} total={count} />
+      ))}
+    </AbsoluteFill>
+  );
+};
+
+// アニメーション付き背景コンポーネント（パララックス効果）
 const AnimatedBackground: React.FC<{ frame: number }> = ({ frame }) => {
-  const rotation = interpolate(frame, [0, 360], [0, 360]);
+  const rotation = interpolate(frame, [0, 660], [0, 720]);
   const scale = interpolate(frame % 60, [0, 30, 60], [1, 1.1, 1]);
+
+  // パララックス用の異なる速度
+  const slowRotation = interpolate(frame, [0, 660], [0, 360]);
+  const fastRotation = interpolate(frame, [0, 660], [0, 1080]);
 
   return (
     <AbsoluteFill
       style={{
         background: `linear-gradient(135deg, ${colors.background.start} 0%, ${colors.background.end} 100%)`,
+        overflow: 'hidden',
       }}
     >
-      {/* アニメーション円 */}
+      {/* 背景レイヤー1（最も遅い） */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '-30%',
+          right: '-20%',
+          width: '1000px',
+          height: '1000px',
+          borderRadius: '50%',
+          background: `radial-gradient(circle, ${colors.primary}15 0%, transparent 70%)`,
+          transform: `rotate(${slowRotation}deg) scale(${scale})`,
+          opacity: 0.4,
+        }}
+      />
+
+      {/* 背景レイヤー2（中速） */}
       <div
         style={{
           position: 'absolute',
@@ -53,6 +135,8 @@ const AnimatedBackground: React.FC<{ frame: number }> = ({ frame }) => {
           opacity: 0.3,
         }}
       />
+
+      {/* 背景レイヤー3（速い） */}
       <div
         style={{
           position: 'absolute',
@@ -62,12 +146,44 @@ const AnimatedBackground: React.FC<{ frame: number }> = ({ frame }) => {
           height: '600px',
           borderRadius: '50%',
           background: `radial-gradient(circle, ${colors.secondary}20 0%, transparent 70%)`,
-          transform: `rotate(${-rotation}deg) scale(${scale})`,
+          transform: `rotate(${-fastRotation}deg) scale(${scale})`,
           opacity: 0.3,
+        }}
+      />
+
+      {/* 追加の装飾レイヤー */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          width: '400px',
+          height: '400px',
+          borderRadius: '50%',
+          background: `radial-gradient(circle, ${colors.accent}10 0%, transparent 70%)`,
+          transform: `translate(-50%, -50%) rotate(${rotation * 0.5}deg)`,
+          opacity: 0.2,
         }}
       />
     </AbsoluteFill>
   );
+};
+
+// カウントアップアニメーション用のヘルパー関数
+const useCountUp = (target: number, frame: number, startFrame: number, duration: number) => {
+  const progress = interpolate(
+    frame,
+    [startFrame, startFrame + duration],
+    [0, 1],
+    { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+  );
+
+  // イージング関数（加速してから減速）
+  const eased = progress < 0.5
+    ? 2 * progress * progress
+    : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+
+  return Math.floor(target * eased);
 };
 
 export const YearWrapped: React.FC<{ stats?: YearStats }> = ({ stats: propsStats }) => {
@@ -161,10 +277,19 @@ export const YearWrapped: React.FC<{ stats?: YearStats }> = ({ stats: propsStats
     },
   });
 
+  // カウントアップアニメーション
+  const countUpValue = useCountUp(stats.totalEvents, frame, 90, 50);
+
+  // パルス効果
+  const pulse = Math.sin(frame * 0.2) * 0.05 + 1;
+
   return (
     <AbsoluteFill>
       {/* アニメーション背景 */}
       <AnimatedBackground frame={frame} />
+
+      {/* パーティクルシステム */}
+      {frame < 90 && <ParticleSystem frame={frame} count={30} />}
 
       {/* シーン1: タイトル */}
       {frame < 90 && (
@@ -192,6 +317,7 @@ export const YearWrapped: React.FC<{ stats?: YearStats }> = ({ stats: propsStats
                 margin: 0,
                 fontFamily: 'system-ui, -apple-system, sans-serif',
                 letterSpacing: '-2px',
+                transform: `scale(${pulse})`,
               }}
             >
               Your 2025
@@ -214,125 +340,134 @@ export const YearWrapped: React.FC<{ stats?: YearStats }> = ({ stats: propsStats
 
       {/* シーン2: 総イベント数 */}
       {frame >= 90 && frame < 180 && (
-        <AbsoluteFill
-          style={{
-            justifyContent: 'center',
-            alignItems: 'center',
-            opacity: totalEventsOpacity,
-          }}
-        >
-          <div
+        <>
+          <ParticleSystem frame={frame - 90} count={40} />
+          <AbsoluteFill
             style={{
-              textAlign: 'center',
-              padding: '60px',
-              borderRadius: '30px',
-              background: 'rgba(255, 255, 255, 0.05)',
-              backdropFilter: 'blur(10px)',
-              border: `2px solid rgba(99, 102, 241, 0.2)`,
-              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+              justifyContent: 'center',
+              alignItems: 'center',
+              opacity: totalEventsOpacity,
             }}
           >
-            <p
+            <div
               style={{
-                fontSize: '48px',
-                color: colors.text.secondary,
-                marginBottom: '30px',
-                fontFamily: 'system-ui, -apple-system, sans-serif',
-                fontWeight: '500',
+                textAlign: 'center',
+                padding: '60px',
+                borderRadius: '30px',
+                background: 'rgba(255, 255, 255, 0.05)',
+                backdropFilter: 'blur(10px)',
+                border: `2px solid rgba(99, 102, 241, 0.2)`,
+                boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+                transform: `scale(${pulse})`,
               }}
             >
-              あなたは2025年に
-            </p>
-            <h2
-              style={{
-                fontSize: '200px',
-                fontWeight: '900',
-                background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.accent} 100%)`,
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-                margin: 0,
-                transform: `scale(${numberScale})`,
-                fontFamily: 'system-ui, -apple-system, sans-serif',
-                textShadow: '0 0 80px rgba(99, 102, 241, 0.5)',
-              }}
-            >
-              {stats.totalEvents}
-            </h2>
-            <p
-              style={{
-                fontSize: '48px',
-                color: colors.text.secondary,
-                marginTop: '30px',
-                fontFamily: 'system-ui, -apple-system, sans-serif',
-                fontWeight: '500',
-              }}
-            >
-              個のイベントがありました 🎉
-            </p>
-          </div>
-        </AbsoluteFill>
+              <p
+                style={{
+                  fontSize: '48px',
+                  color: colors.text.secondary,
+                  marginBottom: '30px',
+                  fontFamily: 'system-ui, -apple-system, sans-serif',
+                  fontWeight: '500',
+                }}
+              >
+                あなたは2025年に
+              </p>
+              <h2
+                style={{
+                  fontSize: '200px',
+                  fontWeight: '900',
+                  background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.accent} 100%)`,
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                  margin: 0,
+                  transform: `scale(${numberScale}) rotate(${interpolate(frame, [90, 140], [0, 360], { extrapolateRight: 'clamp' })}deg)`,
+                  fontFamily: 'system-ui, -apple-system, sans-serif',
+                  textShadow: '0 0 80px rgba(99, 102, 241, 0.5)',
+                }}
+              >
+                {countUpValue}
+              </h2>
+              <p
+                style={{
+                  fontSize: '48px',
+                  color: colors.text.secondary,
+                  marginTop: '30px',
+                  fontFamily: 'system-ui, -apple-system, sans-serif',
+                  fontWeight: '500',
+                }}
+              >
+                個のイベントがありました 🎉
+              </p>
+            </div>
+          </AbsoluteFill>
+        </>
       )}
 
       {/* シーン3: 最も忙しかった月 */}
       {frame >= 180 && frame < 270 && stats.busiestMonth.month && (
-        <AbsoluteFill
-          style={{
-            justifyContent: 'center',
-            alignItems: 'center',
-            opacity: busiestMonthOpacity,
-          }}
-        >
-          <div
+        <>
+          <ParticleSystem frame={frame - 180} count={35} />
+          <AbsoluteFill
             style={{
-              textAlign: 'center',
-              padding: '80px',
-              borderRadius: '30px',
-              background: 'rgba(255, 255, 255, 0.05)',
-              backdropFilter: 'blur(10px)',
-              border: `2px solid rgba(236, 72, 153, 0.3)`,
-              boxShadow: '0 20px 60px rgba(236, 72, 153, 0.2)',
+              justifyContent: 'center',
+              alignItems: 'center',
+              opacity: busiestMonthOpacity,
             }}
           >
-            <p
+            <div
               style={{
-                fontSize: '52px',
-                color: colors.text.secondary,
-                marginBottom: '40px',
-                fontFamily: 'system-ui, -apple-system, sans-serif',
-                fontWeight: '500',
+                textAlign: 'center',
+                padding: '80px',
+                borderRadius: '30px',
+                background: 'rgba(255, 255, 255, 0.05)',
+                backdropFilter: 'blur(10px)',
+                border: `2px solid rgba(236, 72, 153, 0.3)`,
+                boxShadow: '0 20px 60px rgba(236, 72, 153, 0.2)',
+                transform: `scale(${pulse}) rotate(${interpolate(frame, [180, 190, 200], [0, 5, -5], { extrapolateRight: 'clamp' })}deg)`,
               }}
             >
-              最も忙しかった月は
-            </p>
-            <h2
-              style={{
-                fontSize: '160px',
-                fontWeight: '900',
-                background: `linear-gradient(135deg, ${colors.warning} 0%, ${colors.accent} 100%)`,
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-                margin: 0,
-                fontFamily: 'system-ui, -apple-system, sans-serif',
-                textShadow: '0 0 60px rgba(236, 72, 153, 0.4)',
-              }}
-            >
-              {stats.busiestMonth.month}
-            </h2>
-            <p
-              style={{
-                fontSize: '64px',
-                color: colors.text.primary,
-                marginTop: '40px',
-                fontFamily: 'system-ui, -apple-system, sans-serif',
-                fontWeight: '600',
-              }}
-            >
-              {stats.busiestMonth.count}件のイベント 🔥
-            </p>
-          </div>
-        </AbsoluteFill>
+              <p
+                style={{
+                  fontSize: '52px',
+                  color: colors.text.secondary,
+                  marginBottom: '40px',
+                  fontFamily: 'system-ui, -apple-system, sans-serif',
+                  fontWeight: '500',
+                }}
+              >
+                最も忙しかった月は
+              </p>
+              <h2
+                style={{
+                  fontSize: '160px',
+                  fontWeight: '900',
+                  background: `linear-gradient(135deg, ${colors.warning} 0%, ${colors.accent} 100%)`,
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                  margin: 0,
+                  fontFamily: 'system-ui, -apple-system, sans-serif',
+                  textShadow: '0 0 60px rgba(236, 72, 153, 0.4)',
+                  transform: `scale(${interpolate(frame, [180, 220], [0.5, 1.2], { extrapolateRight: 'clamp' })})`,
+                }}
+              >
+                {stats.busiestMonth.month}
+              </h2>
+              <p
+                style={{
+                  fontSize: '64px',
+                  color: colors.text.primary,
+                  marginTop: '40px',
+                  fontFamily: 'system-ui, -apple-system, sans-serif',
+                  fontWeight: '600',
+                }}
+              >
+                {stats.busiestMonth.count}件のイベント 🔥
+              </p>
+            </div>
+          </AbsoluteFill>
+        </>
       )}
 
       {/* シーン4: よく行った場所 TOP3 */}
@@ -581,47 +716,51 @@ export const YearWrapped: React.FC<{ stats?: YearStats }> = ({ stats: propsStats
 
       {/* シーン7: エンディング */}
       {frame >= 600 && (
-        <AbsoluteFill
-          style={{
-            justifyContent: 'center',
-            alignItems: 'center',
-            opacity: endingOpacity,
-          }}
-        >
-          <div
+        <>
+          <ParticleSystem frame={frame - 600} count={60} />
+          <AbsoluteFill
             style={{
-              textAlign: 'center',
-              transform: `scale(${endingScale})`,
+              justifyContent: 'center',
+              alignItems: 'center',
+              opacity: endingOpacity,
             }}
           >
-            <h1
+            <div
               style={{
-                fontSize: '120px',
-                fontWeight: '900',
-                background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.secondary} 50%, ${colors.accent} 100%)`,
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-                margin: 0,
-                fontFamily: 'system-ui, -apple-system, sans-serif',
-                letterSpacing: '-2px',
+                textAlign: 'center',
+                transform: `scale(${endingScale}) rotate(${interpolate(frame, [600, 630], [0, 360], { extrapolateRight: 'clamp' })}deg)`,
               }}
             >
-              Thank You!
-            </h1>
-            <p
-              style={{
-                fontSize: '56px',
-                fontWeight: '500',
-                color: colors.text.secondary,
-                marginTop: '40px',
-                fontFamily: 'system-ui, -apple-system, sans-serif',
-              }}
-            >
-              素敵な2025年でした ✨
-            </p>
-          </div>
-        </AbsoluteFill>
+              <h1
+                style={{
+                  fontSize: '120px',
+                  fontWeight: '900',
+                  background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.secondary} 50%, ${colors.accent} 100%)`,
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                  margin: 0,
+                  fontFamily: 'system-ui, -apple-system, sans-serif',
+                  letterSpacing: '-2px',
+                  transform: `scale(${pulse})`,
+                }}
+              >
+                Thank You!
+              </h1>
+              <p
+                style={{
+                  fontSize: '56px',
+                  fontWeight: '500',
+                  color: colors.text.secondary,
+                  marginTop: '40px',
+                  fontFamily: 'system-ui, -apple-system, sans-serif',
+                }}
+              >
+                素敵な2025年でした ✨
+              </p>
+            </div>
+          </AbsoluteFill>
+        </>
       )}
     </AbsoluteFill>
   );
