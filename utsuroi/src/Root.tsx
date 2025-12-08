@@ -38,7 +38,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="YearWrapped"
         component={YearWrapped}
-        durationInFrames={360}
+        durationInFrames={660}
         fps={30}
         width={1920}
         height={1080}
